@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG Lab Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Devanagari:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <strong class="logo">RAG Lab</strong>
+    <nav id="tabs" hidden>
+      <button data-tab="chat" class="tab on" data-i18n="chat">Chat</button>
+      <button data-tab="lab" class="tab" data-i18n="lab">Lab</button>
+      <button data-tab="settings" class="tab" data-i18n="settings">Settings</button>
+    </nav>
+    <div class="right">
+      <button id="lang" class="ghost" aria-label="Change interface language">EN / हिं</button>
+      <button id="openBtn" class="pill" data-i18n="open">Open Notebook</button>
+    </div>
+  </header>
+
+  <!-- Landing view -->
+  <main id="landing">
+    <section class="hero">
+      <div>
+        <h1 id="heroTitle"></h1>
+        <p id="heroSub" class="muted"></p>
+        <button class="pill big" id="heroBtn" data-i18n="open">Open Notebook</button>
+      </div>
+      <!-- Pure CSS illustration: three passages, one highlighted and cited -->
+      <div class="stack" aria-hidden="true">
+        <div class="card p1">…admission closes on the last Friday of July…</div>
+        <div class="card p2">…the annual fee is <mark>₹48,500 per year</mark> <span class="chip">1</span></div>
+        <div class="card p3">…hostel rooms are allotted by merit…</div>
+      </div>
+    </section>
+    <section class="strip" aria-label="Works with">
+      <span class="tag">PDF</span><span class="tag">DOCX</span><span class="tag">TXT</span>
+      <span class="tag">Web link</span><span class="tag">YouTube</span><span class="tag">.gov.in</span>
+    </section>
+    <section class="demo">
+      <h2>Check the source, not just the answer</h2>
+      <p class="muted">Click a citation chip and the exact passage opens with the matching words highlighted.</p>
+    </section>
+  </main>
+
+  <!-- App view -->
+  <div id="app" hidden>
+    <aside id="side">
+      <label class="lbl" for="nbSelect">Notebook</label>
+      <div class="row"><select id="nbSelect"></select><button id="nbNew" class="ghost" data-i18n="newNb">New notebook</button></div>
+      <h3 data-i18n="sources">Sources</h3>
+      <ul id="srcList" class="srcs"></ul>
+      <label id="drop" class="drop" tabindex="0">
+        <input id="file" type="file" accept=".pdf,.docx,.txt" hidden multiple>
+        <span data-i18n="drop">Drop a file</span>
+      </label>
+      <div class="row addtabs" role="tablist">
+        <button class="mini on" data-add="upload">Upload</button><button class="mini" data-add="url">Link</button>
+        <button class="mini" data-add="youtube">YouTube</button><button class="mini" data-add="official">Official</button>
+      </div>
+      <form id="linkForm" class="linkform" hidden>
+        <input id="linkUrl" type="url" placeholder="https://" aria-label="Link">
+        <button class="pill" type="submit">Add</button>
+      </form>
+      <div id="officialBox" hidden>
+        <form id="offForm" class="linkform"><input id="offQ" placeholder="Search official sources" aria-label="Search official sources"><button class="pill" type="submit">Search</button></form>
+        <ul id="offRes" class="srcs"></ul>
+      </div>
+      <p class="muted small" data-i18n="privacy"></p>
+    </aside>
+
+    <section id="chat" class="panel on">
+      <div id="log" class="log" aria-live="polite"></div>
+      <div class="tools">
+        <button class="ghost" data-study="summary">Summary</button>
+        <button class="ghost" data-study="faq">FAQ</button>
+        <button class="ghost" data-study="guide">Study guide</button>
+        <button class="ghost" id="export">Export chat</button>
+      </div>
+      <div class="composer">
+        <button id="mic" class="ghost" aria-label="Voice input" title="Voice input">🎤</button>
+        <textarea id="q" rows="1" placeholder=""></textarea>
+        <button id="send" class="pill" data-i18n="send">Send</button>
+      </div>
+    </section>
+
+    <aside id="viewer" class="viewer"><p class="muted small">Click a citation chip to read the source passage here.</p></aside>
+
+    <section id="lab" class="panel"><div id="labRoot"></div></section>
+
+    <section id="settings" class="panel"><form id="form" class="card"></form>
+      <button id="wipe" class="ghost danger" data-i18n="deleteAll">Delete all my data</button></section>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
