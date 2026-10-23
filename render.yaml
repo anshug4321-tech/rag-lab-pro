@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: rag-lab-pro
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: EMBED_BACKEND
+        value: gemini
