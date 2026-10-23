@@ -1,0 +1,11 @@
+name: tests
+on: [push, pull_request]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install fastapi uvicorn python-multipart pydantic python-dotenv chromadb PyMuPDF python-docx pytest httpx google-genai
+      - run: python -m pytest -q
