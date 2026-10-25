@@ -1,102 +1,38 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RAG Lab Pro</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Devanagari:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <header class="top">
-    <strong class="logo">RAG Lab</strong>
-    <nav id="tabs" hidden>
-      <button data-tab="chat" class="tab on" data-i18n="chat">Chat</button>
-      <button data-tab="lab" class="tab" data-i18n="lab">Lab</button>
-      <button data-tab="settings" class="tab" data-i18n="settings">Settings</button>
-    </nav>
-    <div class="right">
-      <button id="lang" class="ghost" aria-label="Change interface language">EN / हिं</button>
-      <button id="openBtn" class="pill" data-i18n="open">Open Notebook</button>
-    </div>
-  </header>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RAG Lab Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Devanagari:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head><body>
+<div id="shell">
+<aside id="sb"><div class="row"><b>RAG Lab <span class="mu" style="font-weight:300">Pro</span></b><span class="sp"></span><button class="gh" id="sbx" aria-label="Close menu">✕</button></div>
+<div id="nbRow" class="row"></div>
+<button class="newc" id="newChat">＋ <span data-i="newc">New chat</span></button>
+<input id="cf" placeholder="Search chats (Ctrl+K)" aria-label="Search chats"><div id="chats"></div>
+<p id="hs" class="wa" style="margin:0"></p>
+<div class="row"><button class="gh" id="thm" aria-label="Toggle theme">🌓</button><button class="gh" id="lg">EN / हिं</button><button class="gh" id="stg">⚙ Settings</button></div></aside>
 
-  <!-- Landing view -->
-  <main id="landing">
-    <section class="hero">
-      <div>
-        <h1 id="heroTitle"></h1>
-        <p id="heroSub" class="muted"></p>
-        <button class="pill big" id="heroBtn" data-i18n="open">Open Notebook</button>
-      </div>
-      <!-- Pure CSS illustration: three passages, one highlighted and cited -->
-      <div class="stack" aria-hidden="true">
-        <div class="card p1">…admission closes on the last Friday of July…</div>
-        <div class="card p2">…the annual fee is <mark>₹48,500 per year</mark> <span class="chip">1</span></div>
-        <div class="card p3">…hostel rooms are allotted by merit…</div>
-      </div>
-    </section>
-    <section class="strip" aria-label="Works with">
-      <span class="tag">PDF</span><span class="tag">DOCX</span><span class="tag">TXT</span>
-      <span class="tag">Web link</span><span class="tag">YouTube</span><span class="tag">.gov.in</span>
-    </section>
-    <section class="demo">
-      <h2>Check the source, not just the answer</h2>
-      <p class="muted">Click a citation chip and the exact passage opens with the matching words highlighted.</p>
-    </section>
-  </main>
+<main id="mn"><div class="tbar row"><button class="gh" id="hb" aria-label="Menu">☰</button><span class="ct" id="ct"></span><span class="sp"></span>
+<button class="gh" id="lb">🧪 Lab</button><button class="gh" id="ex">⬇ Export</button><button class="gh" id="sb2">📚 Sources <span class="badge" id="sc">0</span></button></div>
+<div id="thread" aria-live="polite"><div class="col" id="col"></div></div>
+<div id="cmp"><div class="box"><textarea id="q" rows="1" aria-label="Message"></textarea>
+<div class="row"><label class="gh" title="Add file">📎<input id="sf" type="file" multiple accept=".pdf,.docx,.txt" hidden></label><button class="gh" id="mic" aria-label="Voice input">🎤</button><button class="gh sm" id="mb" title="Answer mode">✨ Smart</button><span class="sp"></span><button class="send" id="send" aria-label="Send">↑</button></div></div>
+<p class="mu sm c" style="margin:6px 0 0" data-i="priv"></p></div></main>
 
-  <!-- App view -->
-  <div id="app" hidden>
-    <aside id="side">
-      <label class="lbl" for="nbSelect">Notebook</label>
-      <div class="row"><select id="nbSelect"></select><button id="nbNew" class="ghost" data-i18n="newNb">New notebook</button></div>
-      <h3 data-i18n="sources">Sources</h3>
-      <ul id="srcList" class="srcs"></ul>
-      <label id="drop" class="drop" tabindex="0">
-        <input id="file" type="file" accept=".pdf,.docx,.txt" hidden multiple>
-        <span data-i18n="drop">Drop a file</span>
-      </label>
-      <div class="row addtabs" role="tablist">
-        <button class="mini on" data-add="upload">Upload</button><button class="mini" data-add="url">Link</button>
-        <button class="mini" data-add="youtube">YouTube</button><button class="mini" data-add="official">Official</button>
-      </div>
-      <form id="linkForm" class="linkform" hidden>
-        <input id="linkUrl" type="url" placeholder="https://" aria-label="Link">
-        <button class="pill" type="submit">Add</button>
-      </form>
-      <div id="officialBox" hidden>
-        <form id="offForm" class="linkform"><input id="offQ" placeholder="Search official sources" aria-label="Search official sources"><button class="pill" type="submit">Search</button></form>
-        <ul id="offRes" class="srcs"></ul>
-      </div>
-      <p class="muted small" data-i18n="privacy"></p>
-    </aside>
+<aside id="dr" hidden><div class="row"><b>Sources</b><span class="sp"></span><button class="gh danger" id="rall" hidden>Remove all</button><button class="gh" id="dx" aria-label="Close">✕</button></div>
+<ul class="srcs" id="sl"></ul>
+<div class="row" style="flex-wrap:wrap"><button class="gh on" data-add="f">File</button><button class="gh" data-add="p">Paste</button><button class="gh" data-add="w">Web</button><button class="gh" data-add="y">YouTube</button></div>
+<div data-ap="f" style="margin-top:8px"><label class="drop" id="drop">Drop or click: PDF, DOCX, TXT<input id="sf2" type="file" multiple accept=".pdf,.docx,.txt" hidden></label></div>
+<div data-ap="p" hidden style="margin-top:8px;display:grid;gap:6px"><input id="st" placeholder="Title"><textarea id="sx" rows="5" placeholder="Paste text (Hindi or English)"></textarea><button class="pill" id="sa">Add text</button></div>
+<div data-ap="w" hidden style="margin-top:8px;display:grid;gap:6px"><input id="wu" placeholder="https://…"><button class="pill" id="wa">Import page</button><p class="mu sm" style="margin:0">The server downloads the text of a public web page.</p></div>
+<div data-ap="y" hidden style="margin-top:8px;display:grid;gap:6px"><input id="yu" placeholder="https://www.youtube.com/watch?v=…"><button class="pill" id="ya">Import captions</button><p class="mu sm" style="margin:0">Needs a video with Hindi or English captions.</p></div>
+<hr style="border:0;border-top:1px solid var(--bd);margin:14px 0"><div id="vw"><span class="mu sm">Click a citation chip [1] to read the exact passage here.</span></div></aside></div>
 
-    <section id="chat" class="panel on">
-      <div id="log" class="log" aria-live="polite"></div>
-      <div class="tools">
-        <button class="ghost" data-study="summary">Summary</button>
-        <button class="ghost" data-study="faq">FAQ</button>
-        <button class="ghost" data-study="guide">Study guide</button>
-        <button class="ghost" id="export">Export chat</button>
-      </div>
-      <div class="composer">
-        <button id="mic" class="ghost" aria-label="Voice input" title="Voice input">🎤</button>
-        <textarea id="q" rows="1" placeholder=""></textarea>
-        <button id="send" class="pill" data-i18n="send">Send</button>
-      </div>
-    </section>
-
-    <aside id="viewer" class="viewer"><p class="muted small">Click a citation chip to read the source passage here.</p></aside>
-
-    <section id="lab" class="panel"><div id="labRoot"></div></section>
-
-    <section id="settings" class="panel"><form id="form" class="card"></form>
-      <button id="wipe" class="ghost danger" data-i18n="deleteAll">Delete all my data</button></section>
-  </div>
-
-  <div id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="/app.js"></script>
-</body>
-</html>
+<div class="ov" id="labM" hidden><div class="card mod"><div class="row"><h3 style="margin:0">Evaluation Lab</h3><span class="sp"></span><button class="gh" data-close="labM">✕</button></div><div id="labRoot"></div></div></div>
+<div class="ov" id="setM" hidden><div class="card mod" style="max-width:420px"><div class="row"><h3 style="margin:0">Settings</h3><span class="sp"></span><button class="gh" data-close="setM">✕</button></div>
+<div id="setForm" style="display:grid;gap:12px;margin-top:10px"></div><button class="gh" id="wipe" style="margin-top:10px">Delete all my data</button></div></div>
+<div class="ov" id="loginM" hidden><form class="card mod" id="loginF" style="max-width:360px;display:grid;gap:10px"><h3 style="margin:0">Password</h3><input id="pw" type="password" autocomplete="current-password" placeholder="App password"><button class="pill">Continue</button></form></div>
+<div id="toast" role="status"></div>
+<script type="module" src="/app.js"></script>
+</body></html>
