@@ -2,7 +2,7 @@
 import { api, j, streamPost } from "./api.js";
 import { renderLab } from "./lab.js";
 
-const $ = (s) => document.querySelector(s), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = (s) => document.querySelector(s) || (console.warn("Missing element " + s), document.createElement("div")), esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
 const L = { en: { newc: "New chat", ph: "Message RAG Lab… (Hindi, English or Hinglish)", h1: "Ask your documents.", h2: "Verify every answer.", priv: "Your text is sent to Google Gemini to answer. Do not upload confidential documents to a public demo." },
   hi: { newc: "नई चैट", ph: "RAG Lab को लिखें… (हिंदी, English या Hinglish)", h1: "अपने दस्तावेज़ों से पूछें।", h2: "हर जवाब जाँचें।", priv: "आपका टेक्स्ट जवाब के लिए Google Gemini को भेजा जाता है। पब्लिक डेमो में गोपनीय दस्तावेज़ न डालें।" } };
@@ -200,7 +200,7 @@ document.addEventListener("keydown", (e) => { if (e.key == "Escape") ["labM", "s
 /* ---------- start ---------- */
 if (C.theme) document.documentElement.dataset.theme = C.theme;
 (async () => {
-  setLang(C.lang);
+  setLang(C.lang); $("#ver").textContent = "App version 2.3"; document.title = "RAG Lab Pro v2.3";
   try { const h = await (await fetch("/api/health")).json(); if (!h.gemini_key_present) $("#hs").textContent = "⚠ GEMINI_API_KEY is missing on the server."; } catch (e) { /* ignore */ }
   try { cfg = await api.getSettings(); drawMode(); await loadNbs(); } catch (e) { toast(e.message); }
 })();
