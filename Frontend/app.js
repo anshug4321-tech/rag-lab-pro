@@ -20,58 +20,6 @@ const chatsOf = () => (C.chats[C.cur] ||= []), chat = () => chatsOf().find((c) =
 // two-click confirm (browser confirm() boxes are blocked in shared pages)
 function arm(b,label,fn){let t;b.onclick=e=>{e.stopPropagation();if(b.dataset.arm){clearTimeout(t);fn();return}b.dataset.arm=1;const o=b.textContent;b.textContent=label;b.classList.add("danger");t=setTimeout(()=>{delete b.dataset.arm;b.textContent=o;b.classList.remove("danger")},3000)}}
 function edit(el,val,cb){const i=document.createElement("input");i.value=val;el.replaceWith(i);i.focus();i.select();let d=0;const end=ok=>{if(d)return;d=1;cb(ok&&i.value.trim()?i.value.trim():null)};i.onblur=()=>end(true);i.onkeydown=e=>{if(e.key=="Enter")end(true);if(e.key=="Escape")end(false)}}
-
-/* ---------- toolkit (written from scratch) ---------- */
-// Unicode-aware tokenizer: \p{M} keeps Devanagari matras, so Hindi words are not cut in pieces.
-const tok=t=>t.toLowerCase().normalize("NFC").match(/[\p{L}\p{M}\p{N}]+/gu)||[];
-function chunk(t,size,ov=.15){const sp=[];let st=0;for(const m of t.matchAll(/[.?!।]\s+/g)){if(m.index+1>st)sp.push([st,m.index+1]);st=m.index+m[0].length}if(st<t.length)sp.push([st,t.length]);
- const P=[];for(let[s,e]of sp){while(e-s>size){P.push([s,s+size]);s+=size}P.push([s,e])}
- const out=[],keep=size*ov;let i=0;while(i<P.length){let j=i;const s0=P[i][0];while(j<P.length&&P[j][1]-s0<=size)j++;j=Math.max(j,i+1);const e0=P[j-1][1];out.push([s0,e0]);if(j>=P.length)break;let n=j;while(n-1>i&&e0-P[n-1][0]<=keep)n--;i=n>i?n:j}return out}
-function hv(t){const v=new Float32Array(512),s=" "+tok(t).join(" ")+" ";for(let i=0;i<s.length-2;i++){let h=2166136261;for(let j=0;j<3;j++){h^=s.charCodeAt(i+j);h=Math.imul(h,16777619)}v[(h>>>0)%512]++}const n=Math.hypot(...v)||1;return v.map(x=>x/n)}
-function index(size){const key=size+"|"+S.src.map(s=>s.id).join();if(IDX[size]?.key===key)return IDX[size];
- const C=[],P=new Map(),len=new Map();
- S.src.forEach(s=>chunk(s.text,size).forEach(([a,b],i)=>{const c={id:s.id+":"+i,sid:s.id,title:s.title,a,b,t:s.text.slice(a,b)};c.v=hv(c.t);C.push(c);
-  const tk=tok(c.t),tf=Object.create(null);len.set(c.id,tk.length);tk.forEach(w=>tf[w]=(tf[w]||0)+1);
-  for(const w in tf){if(!P.has(w))P.set(w,new Map());P.get(w).set(c.id,tf[w])}}));
- return IDX[size]={key,C,P,len,by:new Map(C.map(c=>[c.id,c]))}}
-// BM25 over an inverted index (token -> {chunk: term frequency})
-function bm25(ix,q,n){const N=ix.C.length,avg=[...ix.len.values()].reduce((a,b)=>a+b,0)/N||1,sc=new Map();
- for(const w of new Set(tok(q))){const p=ix.P.get(w);if(!p)continue;const idf=Math.log(1+(N-p.size+.5)/(p.size+.5));
-  for(const[id,tf]of p)sc.set(id,(sc.get(id)||0)+idf*tf*2.5/(tf+1.5*(.25+.75*ix.len.get(id)/avg)))}
- return[...sc].sort((a,b)=>b[1]-a[1]).slice(0,n)}
-const vec=(ix,q,n)=>{const v=hv(q);return ix.C.map(c=>[c.id,c.v.reduce((s,x,i)=>s+x*v[i],0)]).sort((a,b)=>b[1]-a[1]).slice(0,n)};
-// Reciprocal Rank Fusion: score = sum 1/(60+rank)
-const rrf=(L,k=60)=>{const s=new Map();L.forEach(l=>l.forEach(([id],i)=>s.set(id,(s.get(id)||0)+1/(k+i+1))));return[...s].sort((a,b)=>b[1]-a[1])};
-function retrieve(q,size,mode,k){const ix=index(size);if(!ix.C.length)return[];
- const a=mode!="vector"?bm25(ix,q,20):[],b=mode!="keyword"?vec(ix,q,20):[],r=mode=="keyword"?a:mode=="vector"?b:rrf([a,b]);
- return r.slice(0,k).map(([id,s],i)=>({...ix.by.get(id),score:+s.toFixed(4),rank:i+1}))}
-function lang(t){const l=[...t].filter(c=>/\p{L}/u.test(c));if(!l.length)return"en";if(l.filter(c=>/[\u0900-\u097F]/.test(c)).length/l.length>.3)return"hi";
- const w=tok(t),H=new Set("kya hai hain kaise kaun kab kitna kitne mujhe mera meri aap nahi nahin ka ki ke ko se mein me kyun batao chahiye yeh ye woh".split(" "));
- const h=w.filter(x=>H.has(x)).length;return h&&h/w.length>=.2?"hinglish":"en"}
-
-
-async function pdfText(f){if(!window.pdfjsLib)await new Promise((ok,no)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";s.onload=ok;s.onerror=no;document.head.append(s)});
- pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
- const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,o=[];for(let i=1;i<=d.numPages;i++)o.push((await(await d.getPage(i)).getTextContent()).items.map(x=>x.str).join(" "));return o.join("\n\n")}
-/* ---------- Lab: Hit@k and MRR across chunk sizes and modes ---------- */
-function drawQ(){$("#ql").textContent=S.qs.length?`${S.qs.length} questions. Example: ${S.qs[0].q}`:"No questions yet."}
-$("#gq").onclick=async()=>{const sample=await getSample();if(!sample)return toast("Claude is not connected. Add your own questions below instead.");
- const pool=index(500).C.filter(c=>c.t.length>150).sort(()=>Math.random()-.5).slice(0,10);if(!pool.length)return toast("Add a source first.");
- $("#ls").textContent="Asking Claude…";
- try{const r=await sample.json("For each numbered passage write ONE question that the passage answers. Reply ONLY with a JSON array of strings, same order.\n"+pool.map((c,i)=>`[${i}] ${c.t}`).join("\n"),{cache:false});
-  if(!Array.isArray(r))throw 0;r.forEach((q,i)=>pool[i]&&S.qs.push({q:String(q),sid:pool[i].sid,a:pool[i].a,b:pool[i].b}));save();drawQ();$("#ls").textContent="Done."}
- catch(e){$("#ls").textContent="Could not make questions. Try again."}};
-$("#aq").onclick=()=>{const q=$("#mq").value.trim();if(!q)return;const top=retrieve(q,500,"keyword",1)[0];if(!top)return toast("No matching passage. Add a source first.");
- S.qs.push({q,sid:top.sid,a:top.a,b:top.b});$("#mq").value="";save();drawQ();toast("Gold passage = best keyword match. Check it by hand.")};
-$("#rq").onclick=()=>{if(S.qs.length<3)return toast("Make at least 3 questions first.");const rows=[],k=S.cfg.k;
- for(const size of[200,500,1000])for(const mode of["keyword","vector","hybrid"]){let h=0,rr=0;
-  S.qs.forEach(q=>{const R=retrieve(q.q,size,mode,k),i=R.findIndex(c=>c.sid==q.sid&&c.a<q.b&&q.a<c.b);if(i>=0){h++;rr+=1/(i+1)}});
-  rows.push([size,mode,h/S.qs.length,rr/S.qs.length])}
- $("#lr").innerHTML=`<table><tr><th>Chunk</th><th>Mode</th><th>Hit@${k}</th><th></th><th>MRR</th></tr>`+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(2)}</td><td><div class="bar2"><i style="width:${r[2]*100}%"></i></div></td><td>${r[3].toFixed(2)}</td></tr>`).join("")+`</table>
- <p class="note">n = ${S.qs.length} questions. Small samples give hints, not proof. Questions were written by Claude from the same passages, so lexical overlap can favour keyword search. Retrieval is scored here; answer judging needs the full server version.</p>`};
-
-
-
 /* ---------- notebooks ---------- */
 async function loadNbs(select) {
   NBS = await api.notebooks();
