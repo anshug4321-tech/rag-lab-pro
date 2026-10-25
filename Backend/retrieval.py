@@ -110,12 +110,12 @@ def search(notebook_id: str, query: str, *, mode: str = "hybrid", k: int = 5, re
     ids = [i for i, _ in ranked]
     info = {r["id"]: r for r in db.rows(
         f"""SELECT c.id, c.text, c.page, c.start_seconds, c.start_offset, c.end_offset, c.source_id,
-                   s.title FROM chunks c JOIN sources s ON s.id=c.source_id
+                   s.title, COALESCE(s.enabled,1) AS enabled FROM chunks c JOIN sources s ON s.id=c.source_id
             WHERE c.id IN ({','.join('?' * len(ids))})""", tuple(ids))}
     cands = [{"chunk_id": i, "score": round(sc, 4), "sim": sims.get(i), "text": info[i]["text"],
               "source_id": info[i]["source_id"], "source_title": info[i]["title"], "page": info[i]["page"],
               "start_seconds": info[i]["start_seconds"], "start": info[i]["start_offset"],
-              "end": info[i]["end_offset"]} for i, sc in ranked if i in info]
+              "end": info[i]["end_offset"]} for i, sc in ranked if i in info and info[i]["enabled"]]
     if rerank:
         cands = llm_rerank(query, cands[:n], model)
     if mmr:
@@ -125,6 +125,26 @@ def search(notebook_id: str, query: str, *, mode: str = "hybrid", k: int = 5, re
             embs.update(dict(zip(got["ids"], got["embeddings"])))
         cands = _mmr(cands, embs, k)
     out = cands[:k]
+    for rank, c in enumerate(out, start=1):
+        c["rank"] = rank
+    return out
+
+
+def search_multi(notebook_id: str, queries: list[str], *, k: int = 5, rerank: bool = False, mmr: bool = False, **kw) -> list[dict]:
+    """Search with 1-3 query variants and merge the lists with Reciprocal Rank Fusion."""
+    queries = [q for q in dict.fromkeys(queries) if q][:3] or [""]
+    if len(queries) == 1:
+        return search(notebook_id, queries[0], k=k, rerank=rerank, mmr=mmr, **kw)
+    lists, by_id = [], {}
+    for q in queries:
+        res = search(notebook_id, q, k=config.CANDIDATES, rerank=False, mmr=False, **kw)
+        lists.append([c["chunk_id"] for c in res])
+        for c in res:
+            by_id.setdefault(c["chunk_id"], c)
+    merged = [dict(by_id[i], score=round(s, 4)) for i, s in rrf(lists, config.RRF_K) if i in by_id][:config.CANDIDATES]
+    if rerank:
+        merged = llm_rerank(queries[0], merged, kw.get("model"))
+    out = merged[:k]
     for rank, c in enumerate(out, start=1):
         c["rank"] = rank
     return out

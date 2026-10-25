@@ -18,7 +18,7 @@ from backend.dsa import TokenBucket
 from backend.embeddings import store
 from backend.llm import LLMError
 from backend.routers import lab
-from backend.utils import check_url_safe
+from backend.utils import check_url_safe, strip_control
 from backend.utils import get_logger
 
 log = get_logger("main")
@@ -81,6 +81,8 @@ class NotebookIn(BaseModel):
 class ChatIn(BaseModel):
     notebook_id: str
     question: str = Field(min_length=1, max_length=2000)
+    history: list[dict] = Field(default_factory=list)
+    mode: str | None = None
 
 
 class FeedbackIn(BaseModel):
@@ -144,7 +146,7 @@ def delete_notebook(nid: str) -> dict:
 
 @app.get("/api/notebooks/{nid}/sources")
 def list_sources(nid: str) -> list[dict]:
-    return db.rows("SELECT id,type,title,status,error,warning,language,origin FROM sources "
+    return db.rows("SELECT id,type,title,status,error,warning,language,origin,COALESCE(enabled,1) AS enabled FROM sources "
                    "WHERE notebook_id=? ORDER BY created_at", (nid,))
 
 
@@ -201,6 +203,44 @@ def official_search(q: str) -> list[dict]:
         raise HTTPException(400, str(exc)) from exc
 
 
+class TextIn(BaseModel):
+    title: str = ""
+    text: str = Field(min_length=30, max_length=2_000_000)
+    url: str = ""
+
+
+class SourcePatch(BaseModel):
+    enabled: bool
+
+
+@app.post("/api/notebooks/{nid}/text")
+def add_text(nid: str, body: TextIn) -> dict:
+    """Add pasted text (optionally remembering the link it came from)."""
+    _need_notebook(nid)
+    url = body.url.strip()
+    if url and not re.match(r"^https?://", url):
+        raise HTTPException(400, "Links must start with http:// or https://")
+    sid = db.new_id()
+    db.run("INSERT INTO sources(id,notebook_id,type,title,origin,full_text,status,created_at,enabled) VALUES(?,?,?,?,?,?,?,?,1)",
+           (sid, nid, "link" if url else "text", (body.title or url[:50] or "Pasted text")[:100], url or "pasted",
+            strip_control(body.text), "queued", db.now()))
+    jobs.submit(sid)
+    return {"id": sid, "status": "queued"}
+
+
+@app.put("/api/sources/{sid}")
+def patch_source(sid: str, body: SourcePatch) -> dict:
+    """Turn a source on or off for answers without deleting it."""
+    db.run("UPDATE sources SET enabled=? WHERE id=?", (int(body.enabled), sid))
+    return {"ok": True}
+
+
+@app.put("/api/notebooks/{nid}")
+def rename_notebook(nid: str, body: NotebookIn) -> dict:
+    db.run("UPDATE notebooks SET name=? WHERE id=?", (body.name.strip(), nid))
+    return {"ok": True}
+
+
 @app.get("/api/sources/{sid}/status")
 def source_status(sid: str) -> dict:
     r = db.one("SELECT id,status,error,warning FROM sources WHERE id=?", (sid,))
@@ -232,7 +272,7 @@ def _sse(events: Iterator[dict]) -> Iterator[str]:
 def chat(body: ChatIn) -> StreamingResponse:
     """Stream an answer with Server-Sent Events."""
     _need_notebook(body.notebook_id)
-    return StreamingResponse(_sse(rag.answer_stream(body.notebook_id, body.question)),
+    return StreamingResponse(_sse(rag.answer_stream(body.notebook_id, body.question, body.history[-8:], body.mode)),
                              media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
@@ -254,7 +294,7 @@ def chunk_context(cid: str) -> dict:
     s = db.one("SELECT title, type, origin FROM sources WHERE id=?", (c["source_id"],))
     return {"before": before, "text": c["text"], "after": after, "page": c["page"],
             "start_seconds": c["start_seconds"], "title": s["title"], "type": s["type"],
-            "url": s["origin"] if s["type"] in ("url", "youtube", "official") else None}
+            "url": s["origin"] if s["type"] in ("url", "youtube", "official", "link") else None}
 
 
 @app.post("/api/feedback")

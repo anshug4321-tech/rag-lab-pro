@@ -74,6 +74,8 @@ def process(source_id: str) -> None:
         title, text, secs = importers.youtube_transcript(src["origin"])
         db.run("UPDATE sources SET title=? WHERE id=? AND (title IS NULL OR title='')", (title, source_id))
         finish(source_id, text, [], None, seconds_for_offset=secs)
+    elif src["type"] in ("text", "link"):
+        finish(source_id, src["full_text"] or "", [], None)
     else:
         raise ValueError("Unknown source type.")
 

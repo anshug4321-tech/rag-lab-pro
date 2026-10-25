@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS notebooks(id TEXT PRIMARY KEY, name TEXT NOT NULL, cr
 CREATE TABLE IF NOT EXISTS sources(
   id TEXT PRIMARY KEY, notebook_id TEXT NOT NULL REFERENCES notebooks(id) ON DELETE CASCADE,
   type TEXT, title TEXT, origin TEXT, content_hash TEXT, language TEXT, full_text TEXT,
-  page_offsets_json TEXT, meta_json TEXT, status TEXT, error TEXT, warning TEXT, created_at TEXT,
+  page_offsets_json TEXT, meta_json TEXT, status TEXT, error TEXT, warning TEXT, created_at TEXT, enabled INTEGER DEFAULT 1,
   UNIQUE(notebook_id, content_hash));
 CREATE TABLE IF NOT EXISTS chunks(
   id TEXT PRIMARY KEY, source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
@@ -76,6 +76,8 @@ def init_db() -> None:
         cols = {r["name"] for r in c.execute("PRAGMA table_info(experiment_results)")}
         if "extra_json" not in cols:  # small migration for databases made by Part 1
             c.execute("ALTER TABLE experiment_results ADD COLUMN extra_json TEXT")
+        if "enabled" not in {r["name"] for r in c.execute("PRAGMA table_info(sources)")}:
+            c.execute("ALTER TABLE sources ADD COLUMN enabled INTEGER DEFAULT 1")
 
 
 def rows(sql: str, args: tuple = ()) -> list[dict[str, Any]]:

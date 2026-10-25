@@ -33,7 +33,7 @@ LLM_TIMEOUT_MS = 60_000
 LLM_RETRIES = 4
 
 DEFAULT_SETTINGS = {
-    "chunk_size": 500, "overlap": 0.15, "top_k": 5, "search_mode": "hybrid",
+    "chunk_size": 500, "overlap": 0.15, "top_k": 5, "search_mode": "hybrid", "answer_mode": "auto",
     "rerank": False, "mmr": False, "rewrite": True,
     "embedding_backend": os.getenv("EMBED_BACKEND", "local"), "trusted_domains": [".gov.in", ".nic.in"], "chat_model": CHAT_MODEL, "judge_model": JUDGE_MODEL,
 }
