@@ -55,6 +55,7 @@ function drawSrc() {
     const x = document.createElement("button"); x.className = "gh"; x.textContent = "✕"; x.title = "Remove source"; x.setAttribute("aria-label", "Remove source");
     li.append(c, n, b, x); ul.append(li);
     if (s.status == "failed" && s.error) { const e = document.createElement("div"); e.className = "er sm"; e.textContent = s.error; li.style.flexWrap = "wrap"; li.append(e); }
+    if (s.status == "ready" && s.warning) { const w = document.createElement("div"); w.className = "wa"; w.textContent = s.warning; li.style.flexWrap = "wrap"; li.append(w); }
     arm(x, "Sure?", async () => { try { await api.delSource(s.id); toast("Source removed"); loadSources(); } catch (e) { toast(e.message); } });
   });
 }
@@ -185,6 +186,7 @@ async function drawSet() {
   add("answer_mode", "Answer mode", "select", [["auto", "Smart: chat + your documents"], ["docs", "Sources only (strict)"], ["chat", "General chat"]]);
   add("search_mode", "Search mode", "select", [["hybrid", "hybrid"], ["keyword", "keyword"], ["vector", "vector"]]);
   add("top_k", "Passages (top-k)", "number"); add("chunk_size", "Chunk size (new sources only)", "select", [["200", "200"], ["500", "500"], ["1000", "1000"]]);
+  add("embedding_backend", "Search index for new files", "select", [["gemini", "Smart: Gemini embeddings (slow for big files)"], ["none", "Fast: keyword only (any file size)"]]);
   add("rerank", "LLM rerank", "check"); add("mmr", "MMR (more variety)", "check");
 }
 arm($("#wipe"), "Click again to delete everything", async () => { try { await api.deleteAll(); C.chats = {}; C.chat = null; C.cur = null; $("#setM").hidden = true; toast("All data deleted"); loadNbs(); } catch (e) { toast(e.message); } });
@@ -200,7 +202,7 @@ document.addEventListener("keydown", (e) => { if (e.key == "Escape") ["labM", "s
 /* ---------- start ---------- */
 if (C.theme) document.documentElement.dataset.theme = C.theme;
 (async () => {
-  setLang(C.lang); $("#ver").textContent = "App version 2.3"; document.title = "RAG Lab Pro v2.3";
+  setLang(C.lang); $("#ver").textContent = "App version 2.4"; document.title = "RAG Lab Pro v2.4";
   try { const h = await (await fetch("/api/health")).json(); if (!h.gemini_key_present) $("#hs").textContent = "⚠ GEMINI_API_KEY is missing on the server."; } catch (e) { /* ignore */ }
   try { cfg = await api.getSettings(); drawMode(); await loadNbs(); } catch (e) { toast(e.message); }
 })();
