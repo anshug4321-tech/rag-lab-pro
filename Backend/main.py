@@ -163,7 +163,7 @@ async def add_source(nid: str, file: UploadFile = File(...)) -> dict:
         raise HTTPException(400, "Only PDF, DOCX and TXT files are allowed.")
     data = await file.read(config.MAX_UPLOAD_BYTES + 1)
     if len(data) > config.MAX_UPLOAD_BYTES:
-        raise HTTPException(413, "File is larger than 20 MB.")
+        raise HTTPException(413, f"File is larger than {config.MAX_UPLOAD_BYTES // 1_048_576} MB.")
     sid = db.new_id()
     path = config.UPLOAD_DIR / f"{sid}_{name}"
     path.write_bytes(data)

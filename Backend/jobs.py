@@ -5,7 +5,7 @@ import threading
 import time
 from pathlib import Path
 
-from backend import db, importers, retrieval, settings as app_settings
+from backend import config, db, importers, retrieval, settings as app_settings
 from backend.chunking import chunk_text
 from backend.dsa import JobQueue, page_for_offset
 from backend.embeddings import embed_passages, store
@@ -96,17 +96,23 @@ def finish(source_id: str, text: str, offsets: list[int], warning: str | None = 
         raise ValueError("No readable text found.")
     lang = detect_language(text[:2000])
     ids = [db.new_id() for _ in pieces]
-    vecs = embed_passages([p[0] for p in pieces], backend)
+    use_vectors = backend != "none" and len(pieces) <= config.EMBED_MAX_CHUNKS
+    note = None
+    if backend != "none" and not use_vectors:
+        note = (f"Large file ({len(pieces)} passages): indexed for keyword search only, to stay within free-tier limits. "
+                "Hindi and English keyword search still works.")
+    vecs = embed_passages([p[0] for p in pieces], backend) if use_vectors else None
     with db.connect() as c:
         c.execute("UPDATE sources SET content_hash=?, language=?, full_text=?, page_offsets_json=?, warning=? WHERE id=?",
-                  (digest, lang, text, json.dumps(offsets), warning, source_id))
+                  (digest, lang, text, json.dumps(offsets), note or warning, source_id))
         c.executemany(
             "INSERT INTO chunks(id,source_id,chunk_config,idx,text,start_offset,end_offset,page,start_seconds,language) "
             "VALUES(?,?,?,?,?,?,?,?,?,?)",
             [(cid, source_id, str(size), i, t, s, e, page_for_offset(offsets, s) if offsets else None,
               seconds_for_offset(s) if seconds_for_offset else None, detect_language(t))
              for i, (cid, (t, s, e)) in enumerate(zip(ids, pieces))])
-    store().add(retrieval.collection_name(str(size), backend), ids, vecs, [p[0] for p in pieces],
-                [{"source_id": source_id, "notebook_id": src["notebook_id"]} for _ in pieces])
+    if vecs is not None:
+        store().add(retrieval.collection_name(str(size), backend), ids, vecs, [p[0] for p in pieces],
+                    [{"source_id": source_id, "notebook_id": src["notebook_id"]} for _ in pieces])
     db.run("UPDATE sources SET status='ready' WHERE id=?", (source_id,))
     retrieval.invalidate(src["notebook_id"])

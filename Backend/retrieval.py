@@ -91,6 +91,8 @@ def search(notebook_id: str, query: str, *, mode: str = "hybrid", k: int = 5, re
            collection: str | None = None, model: str | None = None) -> list[dict]:
     """Return top-k chunk dicts with rank, score, sim, text, source info."""
     col = collection or collection_name(chunk_config, backend)
+    if backend == "none":  # no embeddings: keyword search only
+        mode, mmr = "keyword", False
     n = config.CANDIDATES
     vec_hits, embs = [], {}
     if mode in ("vector", "hybrid") or mmr:

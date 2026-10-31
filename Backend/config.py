@@ -19,15 +19,23 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
 
 # Model names: VERIFY these in the official Google AI docs, they change often.
-CHAT_MODEL = "gemini-2.5-flash"
-JUDGE_MODEL = "gemini-2.5-flash"
+# gemini-2.5-flash was shut down by Google (404). "gemini-flash-latest" always points to the current Flash model.
+# You can override both in Render > Environment (CHAT_MODEL, JUDGE_MODEL). If a model returns 404, llm.py tries MODEL_FALLBACKS.
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gemini-flash-latest")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", CHAT_MODEL)
+MODEL_FALLBACKS = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+# Free-tier embedding limit is about 100 texts per minute: send small batches and pause between them.
+# Files with more passages than this are indexed for keyword search only (no embeddings), so any file size works.
+EMBED_MAX_CHUNKS = int(os.getenv("EMBED_MAX_CHUNKS", "300"))
+EMBED_BATCH = 20
+EMBED_PAUSE = 15
 GEMINI_EMBED_MODEL = "gemini-embedding-001"
 LOCAL_EMBED_MODEL = "intfloat/multilingual-e5-small"
 # Estimated price per 1M tokens in USD. VERIFY current pricing.
 PRICE_IN_PER_M = 0.30
 PRICE_OUT_PER_M = 2.50
 
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 ALLOWED_EXT = {".pdf", ".docx", ".txt"}
 LLM_TIMEOUT_MS = 60_000
 LLM_RETRIES = 4

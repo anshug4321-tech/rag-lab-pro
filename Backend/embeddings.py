@@ -1,4 +1,5 @@
 """Embedding backends (local e5 or Gemini) and the Chroma vector store."""
+import time
 from typing import Sequence
 
 from backend import config
@@ -21,15 +22,27 @@ def _local_model():
 
 
 def _gemini_embed(texts: Sequence[str], task: str = "RETRIEVAL_DOCUMENT") -> list[list[float]]:
-    """Embed with Gemini (needs API key). Verify the model name in Google docs.
-    Sends batches of 50 (the API allows up to 100 per call). `task` tells Gemini if the text is a document or a query."""
-    from google.genai import types
-    from backend.llm import get_client, _call_with_retry
+    """Embed with Gemini. Small batches, a pause between batches, and patient retries on rate limits (429).
+    `task` tells Gemini if the text is a document or a query. Verify the model name in the Google docs."""
+    from google.genai import errors, types
+    from backend.llm import _friendly, get_client
     client, out = get_client(), []
-    for i in range(0, len(texts), 50):
-        batch = list(texts[i:i + 50])
-        res = _call_with_retry(lambda: client.models.embed_content(
-            model=config.GEMINI_EMBED_MODEL, contents=batch, config=types.EmbedContentConfig(task_type=task)))
+    for i in range(0, len(texts), config.EMBED_BATCH):
+        if i:
+            time.sleep(config.EMBED_PAUSE)  # stay under the free-tier per-minute limit
+        batch = list(texts[i:i + config.EMBED_BATCH])
+        for attempt in range(6):
+            try:
+                res = client.models.embed_content(model=config.GEMINI_EMBED_MODEL, contents=batch,
+                                                  config=types.EmbedContentConfig(task_type=task))
+                break
+            except errors.APIError as exc:
+                if getattr(exc, "code", None) in (429, 500, 503) and attempt < 5:
+                    wait = 20 * (attempt + 1)
+                    log.info("Embedding limit/server busy, waiting %ds (try %d)", wait, attempt + 1)
+                    time.sleep(wait)
+                    continue
+                raise _friendly(exc) from exc
         out.extend(e.values for e in res.embeddings)
     return out
 

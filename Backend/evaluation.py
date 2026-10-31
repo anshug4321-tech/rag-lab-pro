@@ -218,12 +218,13 @@ def _ensure_chunks(nb: str, size: str, backend: str, col: str, overlap: float) -
         if not pieces:
             continue
         ids = [db.new_id() for _ in pieces]
-        vecs = embed_passages([p[0] for p in pieces], backend)
+        vecs = embed_passages([p[0] for p in pieces], backend) if backend != "none" else None
         with db.connect() as c:
             c.executemany("INSERT INTO chunks(id,source_id,chunk_config,idx,text,start_offset,end_offset,page,language) VALUES(?,?,?,?,?,?,?,?,?)",
                           [(cid, s["id"], size, i, t, st, en, page_for_offset(offsets, st) if offsets else None, detect_language(t))
                            for i, (cid, (t, st, en)) in enumerate(zip(ids, pieces))])
-        store().add(col, ids, vecs, [p[0] for p in pieces], [{"source_id": s["id"], "notebook_id": nb}] * len(pieces))
+        if vecs is not None:
+            store().add(col, ids, vecs, [p[0] for p in pieces], [{"source_id": s["id"], "notebook_id": nb}] * len(pieces))
         added.append(s["id"])
     return added
 
