@@ -146,6 +146,7 @@ def delete_notebook(nid: str) -> dict:
 
 @app.get("/api/notebooks/{nid}/sources")
 def list_sources(nid: str) -> list[dict]:
+    _need_notebook(nid)
     return db.rows("SELECT id,type,title,status,error,warning,language,origin,COALESCE(enabled,1) AS enabled FROM sources "
                    "WHERE notebook_id=? ORDER BY created_at", (nid,))
 
