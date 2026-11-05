@@ -21,6 +21,9 @@ const chatsOf = () => (C.chats[C.cur] ||= []), chat = () => chatsOf().find((c) =
 function arm(b,label,fn){let t;b.onclick=e=>{e.stopPropagation();if(b.dataset.arm){clearTimeout(t);fn();return}b.dataset.arm=1;const o=b.textContent;b.textContent=label;b.classList.add("danger");t=setTimeout(()=>{delete b.dataset.arm;b.textContent=o;b.classList.remove("danger")},3000)}}
 function edit(el,val,cb){const i=document.createElement("input");i.value=val;el.replaceWith(i);i.focus();i.select();let d=0;const end=ok=>{if(d)return;d=1;cb(ok&&i.value.trim()?i.value.trim():null)};i.onblur=()=>end(true);i.onkeydown=e=>{if(e.key=="Enter")end(true);if(e.key=="Escape")end(false)}}
 /* ---------- notebooks ---------- */
+const RESET = "The server restarted and cleared its data (free hosting). Please add your files again.";
+// Free hosting wipes the database on restart. If the server forgot our notebook, pick or create a fresh one.
+function lost(e) { if (!/Notebook not found/i.test(e.message)) return false; toast(RESET); C.cur = null; C.chat = null; loadNbs(); return true; }
 async function loadNbs(select) {
   NBS = await api.notebooks();
   if (!NBS.length) { await api.newNotebook("My notebook"); NBS = await api.notebooks(); }
@@ -40,7 +43,7 @@ function drawNbs() {
 }
 /* ---------- sources ---------- */
 async function loadSources() {
-  try { SRC = await j(`/api/notebooks/${C.cur}/sources`); } catch (e) { return; }
+  try { SRC = await j(`/api/notebooks/${C.cur}/sources`); } catch (e) { lost(e); return; }
   drawSrc(); draw(); clearTimeout(pollT);
   if (SRC.some((s) => ["queued", "processing"].includes(s.status))) pollT = setTimeout(loadSources, 2000);
 }
@@ -60,12 +63,12 @@ function drawSrc() {
   });
 }
 arm($("#rall"), "Sure?", async () => { for (const s of SRC) { try { await api.delSource(s.id); } catch (e) { /* keep going */ } } toast("All sources removed"); loadSources(); });
-async function files(list) { for (const f of list) { try { await api.upload(C.cur, f); toast("Uploaded " + f.name); } catch (e) { toast(e.message); } } loadSources(); }
+async function files(list) { for (const f of list) { try { await api.upload(C.cur, f); toast("Uploaded " + f.name); } catch (e) { if (!lost(e)) toast(e.message); } } loadSources(); }
 $("#sf").onchange = (e) => { files(e.target.files); e.target.value = ""; $("#dr").hidden = false; };
 $("#sf2").onchange = (e) => { files(e.target.files); e.target.value = ""; };
 document.addEventListener("dragover", (e) => e.preventDefault());
 document.addEventListener("drop", (e) => { e.preventDefault(); if (e.dataTransfer.files.length) { files(e.dataTransfer.files); $("#dr").hidden = false; } });
-const guard = async (fn) => { try { await fn(); loadSources(); } catch (e) { toast(e.message); } };
+const guard = async (fn) => { try { await fn(); loadSources(); } catch (e) { if (!lost(e)) toast(e.message); } };
 $("#sa").onclick = () => guard(async () => { await api.addText(C.cur, $("#st").value, $("#sx").value); $("#sx").value = $("#st").value = ""; toast("Added. Processing…"); });
 $("#wa").onclick = () => guard(async () => { await api.addLink(C.cur, "url", $("#wu").value.trim()); $("#wu").value = ""; toast("Added. Processing…"); });
 $("#ya").onclick = () => guard(async () => { await api.addLink(C.cur, "youtube", $("#yu").value.trim()); $("#yu").value = ""; toast("Added. Processing…"); });
@@ -151,7 +154,7 @@ async function ask(q) {
       if (ev == "error") { m.t = "⚠ " + d; }
       if (ev == "done") { Object.assign(m, { t: d.answer, fu: d.followups, tag: d.tag, route: d.route, qs: d.queries, low: d.low_confidence, id: d.message_id }); if (d.invalid_citations.length) m.t += "\n⚠ Invalid citation number(s): " + d.invalid_citations.join(", "); }
     }, ctrl.signal);
-  } catch (e) { if (e.name != "AbortError" && my == run) m.t = "⚠ " + e.message; }
+  } catch (e) { if (e.name != "AbortError" && my == run) m.t = lost(e) ? "⚠ " + RESET : "⚠ " + e.message; }
   if (my == run) busy = false; save(); drawAll();
 }
 const TP = { summary: "Summary", faq: "FAQ", guide: "Study guide" };
@@ -199,10 +202,11 @@ $("#sb2").onclick = () => { $("#dr").hidden = !$("#dr").hidden; }; $("#dx").oncl
 $("#lb").onclick = () => { $("#labM").hidden = false; renderLab({ nb: C.cur }, toast); }; $("#stg").onclick = () => { $("#setM").hidden = false; drawSet(); };
 document.querySelectorAll("[data-close]").forEach((b) => (b.onclick = () => ($("#" + b.dataset.close).hidden = true)));
 document.addEventListener("keydown", (e) => { if (e.key == "Escape") ["labM", "setM"].forEach((x) => ($("#" + x).hidden = true)); if (e.ctrlKey && e.key.toLowerCase() == "k") { e.preventDefault(); $("#cf").focus(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && C.cur) loadSources(); }); // coming back to the tab: check the server still knows us
 /* ---------- start ---------- */
 if (C.theme) document.documentElement.dataset.theme = C.theme;
 (async () => {
-  setLang(C.lang); $("#ver").textContent = "App version 2.4"; document.title = "RAG Lab Pro v2.4";
+  setLang(C.lang); $("#ver").textContent = "App version 2.5"; document.title = "RAG Lab Pro v2.5";
   try { const h = await (await fetch("/api/health")).json(); if (!h.gemini_key_present) $("#hs").textContent = "⚠ GEMINI_API_KEY is missing on the server."; } catch (e) { /* ignore */ }
   try { cfg = await api.getSettings(); drawMode(); await loadNbs(); } catch (e) { toast(e.message); }
 })();
